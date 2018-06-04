@@ -52,7 +52,7 @@ uint16_t eeReadWord(uint32_t addr) {
   return uwRet;
 }
 
-static uint8_t bitCnt(uint16_t w) {
+static uint8_t onesInWord(uint16_t w) {
 	uint8_t cnt = 0;
 	for(uint8_t i = 0; i < 16; ++i) {
 		if(w & 1) {
@@ -103,15 +103,17 @@ static void serialProcessRx() {
 		char bfr[255];
 		sprintf(bfr, "erase chk: %lu, cnt: %lu", lStart, lCnt);
 		Serial.println(bfr);
-		uint32_t cnt = 0;
+		uint32_t ulOnesCnt = 0;
     for(int i = lStart; i < lCnt; ++i) {
       uint16_t w = eeReadWord(i);
-      cnt += bitCnt(w);
+      ulOnesCnt += onesInWord(w);
 		}
-		double percentage = (cnt*100.0)/(lCnt*16);
+		uint32_t ulBitCnt = (lCnt*16);
+		uint32_t ulZerosCnt = ulBitCnt - ulOnesCnt;
+		double percentage = (ulZerosCnt *100.0)/ulBitCnt;
 		char szDbl[10];
 		dtostrf(percentage, 0, 2, szDbl);
-		sprintf(bfr, "Ones: %lu / %lu (%s%%)", cnt, (lCnt*16), szDbl);
+		sprintf(bfr, "Zeros: %lu / %lu (%s%%)", ulZerosCnt, ulBitCnt, szDbl);
 		Serial.println(bfr);
   }
 
