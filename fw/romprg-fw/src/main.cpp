@@ -5,6 +5,35 @@ bool s_bSerialRxReady = false;
 char s_szSerialBfr[s_ubSerialBfrMaxLength];
 uint8_t s_ubSerialBfrLength = 0;
 
+// Chip enable
+#define PIN_NE PG0
+#define  PORT_NE PORTG
+#define DDR_NE DDRG
+// Write enable
+#define PIN_NWE PG2
+#define PORT_NWE PORTG
+#define DDR_NWE DDRG
+// Output enable
+#define PIN_NOE PG1
+#define PORT_NOE PORTG
+#define DDR_NOE DDRG
+
+#define PORT_ADDR_LO PORTL
+#define DDR_ADDR_LO DDRL
+#define PORT_ADDR_MID PORTK
+#define DDR_ADDR_MID DDRK
+#define PORT_ADDR_HI PORTB
+#define DDR_ADDR_HI DDRB
+
+#define PORT_DATA_LO PORTA
+#define DDR_DATA_LO DDRA
+#define PIN_DATA_LO PINA
+#define PORT_DATA_HI PORTC
+#define DDR_DATA_HI DDRC
+#define PIN_DATA_HI PINC
+
+// http://osoyoo.com/wp-content/uploads/2017/08/arduino_mega_2560_pinout.png
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(76800);
@@ -15,80 +44,142 @@ void setup() {
   // PORTA, PORTC - DIO region
 
   // Data bus
-  DDRA = 0; // Lower
-  DDRC = 0; // Upper
+  DDR_DATA_LO = 0; // Lower
+  DDR_DATA_HI = 0; // Upper
 
   // Address bus
-  DDRL = 0xFF; // Lower
-  DDRK = 0xFF; // Higher
-  DDRB = _BV(PB0) | _BV(PB1); // Highest
+  DDR_ADDR_LO = 0xFF; // Lower
+  DDR_ADDR_MID = 0xFF; // Higher
+  DDR_ADDR_HI = _BV(0) | _BV(1) | _BV(3); // Highest
 
   // Control bits
-  DDRB |= _BV(PB2);           // ~BYTE
-  DDRG = _BV(PG0) | _BV(PG2); // ~E, ~G
-
+	DDR_NE |= _BV(PIN_NE);
+	DDR_NWE |= _BV(PIN_NWE);
+	DDR_NOE |= _BV(PIN_NOE);
 }
 
-void eeLow(void) {
-	// Set all lines low
-	PORTL = 0;
-	PORTK = 0;
-	PORTB = 0;
+void eeRelax(void) {
+	// Set address lines low
+	PORT_ADDR_LO = 0;
+	PORT_ADDR_MID = 0;
+	PORT_ADDR_HI = 0;
 
-	// Set control lines low
-	PORTG &= ~(_BV(PG0) | _BV(PG2));
+	// Set data  lines to input without pullup
+	PORT_DATA_LO = 0;
+  PORT_DATA_HI = 0;
+	DDR_DATA_HI = 0;
+	DDR_DATA_LO = 0;
+
+  // Set control lines hi
+	PORT_NE |= _BV(PIN_NE);
+	PORT_NOE |= _BV(PIN_NOE);
+	PORT_NWE |= _BV(PIN_NOE);
+}
+
+void eeWriteCycle(uint32_t addr, uint16_t data) {
+	PORT_ADDR_LO = addr & 0xFF;
+  PORT_ADDR_MID = (addr >> 8) & 0xFF;
+  PORT_ADDR_HI |= (addr >> 16) & 0b111;
+
+	// Output
+	DDR_DATA_HI = 0xFF;
+	DDR_DATA_LO = 0xFF;
+
+	PORT_DATA_LO = data & 0xFF;
+  PORT_DATA_HI = (data >> 8) & 0xFF;
+
+  // Set control lines lo - address latches on falling edge
+	PORT_NOE |= _BV(PIN_NOE);
+	PORT_NE &= ~ _BV(PIN_NE);
+	PORT_NWE &= ~ _BV(PIN_NWE);
+	// delayMicroseconds(1);
+
+	// Set control lines hi - data latches on rising edge
+	PORT_NE |= _BV(PIN_NE);
+	PORT_NWE |= _BV(PIN_NWE);
+
+	// delayMicroseconds(1);
+	PORT_ADDR_HI &= ~0b111;
 }
 
 uint16_t eeReadWord(uint32_t addr) {
-  // Set WORD mode
-  PORTB &= ~_BV(PB2);
-
   // Set address lines
-  PORTL = addr & 0xFF;
-  PORTK = (addr >> 8) & 0xFF;
-  PORTB = (addr >> 16) & 0b11;
+  PORT_ADDR_LO = addr & 0xFF;
+  PORT_ADDR_MID = (addr >> 8) & 0xFF;
+  PORT_ADDR_HI = (addr >> 16) & 0b111;
+
+	// Set to input without pullup
+	PORT_DATA_LO = 0;
+  PORT_DATA_HI = 0;
+	DDR_DATA_HI = 0;
+	DDR_DATA_LO = 0;
 
   // Set control lines lo
-  PORTG &= ~(_BV(PG0) | _BV(PG2));
-  delayMicroseconds(1);
+	PORT_NWE |= _BV(PIN_NWE);
+	PORT_NE &= ~ _BV(PIN_NE);
+	PORT_NOE &= ~ _BV(PIN_NOE);
+  // delayMicroseconds(1);
 
   // Read from data lines
-  uint16_t uwRet;
-  uwRet = (PINC << 8) | PINA;
+  uint16_t uwRead;
+  uwRead = (PIN_DATA_HI << 8) | PIN_DATA_LO;
 
   // Set control lines hi
-  // PORTG |= _BV(PG0) | _BV(PG2);
+	PORT_NE |= _BV(PIN_NE);
+	PORT_NOE |= _BV(PIN_NOE);
 
-  return uwRet;
+  return uwRead;
+}
+
+uint8_t eeToggleCheck(void) {
+	constexpr uint8_t ubToggleMask = _BV(2) | _BV(6);
+	uint16_t uwStatusOld, uwStatus;
+	do {
+		uwStatus = eeReadWord(0);
+		if((uwStatusOld & ubToggleMask) == (uwStatus & ubToggleMask)) {
+			return 1;
+		}
+		uwStatusOld = uwStatus;
+	} while(!(uwStatus & _BV(5)));
+	uwStatusOld = eeReadWord(0);
+	uwStatus = eeReadWord(0);
+	if((uwStatusOld & ubToggleMask) == (uwStatus & ubToggleMask)) {
+		return 1;
+	}
+	return 0;
 }
 
 uint8_t eeWriteVerify(uint32_t ulAddr, uint16_t uwVal) {
-  // Set WORD mode
-  PORTB &= ~_BV(PB2);
+	eeWriteCycle(0x555, 0xAA);
+	eeWriteCycle(0x2AA, 0x55);
+	eeWriteCycle(0x555, 0xA0);
+	eeWriteCycle(ulAddr, uwVal);
 
-  // Set address lines
-  PORTL = ulAddr & 0xFF;
-  PORTK = (ulAddr >> 8) & 0xFF;
-  PORTB = (ulAddr >> 16) & 0b11;
+	// Verify
+	uint16_t uwVerify;
+	do {
+		uwVerify = eeReadWord(ulAddr);
+		if((uwVerify & _BV(7)) == (uwVal & _BV(7))) {
+			return 1;
+		}
+	} while(uwVerify & _BV(7));
 
-	// TODO Set /E line lo, /G line hi
-	// TODO Wait for write
+	uwVerify = eeReadWord(ulAddr);
+	if((uwVerify & _BV(7)) == (uwVal & _BV(7))) {
+		return 1;
+	}
+	return 0;
+}
 
-	// Set /E line hi, /G line lo
-	PORTG |= _BV(PG0);
-  PORTG &= ~ _BV(PG2);
-  delayMicroseconds(1);
+uint8_t eeErase(void) {
+	eeWriteCycle(0x555, 0xAA);
+	eeWriteCycle(0x2AA, 0x55);
+	eeWriteCycle(0x555, 0x80);
+	eeWriteCycle(0x555, 0xAA);
+	eeWriteCycle(0x2AA, 0x55);
+	eeWriteCycle(0x555, 0x10);
 
-	while(1) {}
-
-  // Read from data lines
-  uint16_t uwRet;
-  uwRet = (PINC << 8) | PINA;
-
-
-  // Set control lines hi
-  PORTG |= _BV(PG0) | _BV(PG2);
-  return 0;
+	return eeToggleCheck();
 }
 
 static uint8_t onesInWord(uint16_t w) {
@@ -111,15 +202,18 @@ static void serialProcessRx() {
   sscanf(s_szSerialBfr, "%s %lu %lu", szCmd, &ulStart, &ulCnt);
   if(!strcmp(szCmd, "read")) {
     // Read mode
-    uint16_t w;
+    uint8_t w;
     char bfr[255];
     sprintf(bfr, "start: %lu, cnt: %lu", ulStart, ulCnt);
     Serial.println(bfr);
     for(uint32_t i = ulStart; i < ulStart+ulCnt; ++i) {
       w = eeReadWord(i);
-      w = (w << 8) | (w >> 8); // Endian swap
-      Serial.write((char*)&w, 2);
+      // w = (w << 8) | (w >> 8); // Endian swap
+			sprintf(bfr, "%02x ", w);
+			Serial.print(bfr);
+      // Serial.write((char*)&w, 1);
     }
+		Serial.println("");
   }
   else if(!strcmp(szCmd, "mask")) {
     // Test mode
@@ -143,7 +237,7 @@ static void serialProcessRx() {
 		Serial.println(bfr);
 		uint32_t ulOnesCnt = 0;
     for(uint32_t i = ulStart; i < ulStart+ulCnt; ++i) {
-      uint16_t w = eeReadWord(i);
+      uint16_t w = eeReadWord(i) | 0xFF00;
       ulOnesCnt += onesInWord(w);
 		}
 		uint32_t ulBitCnt = (ulCnt*16);
@@ -156,16 +250,21 @@ static void serialProcessRx() {
   }
 	else if(!strcmp(szCmd, "write")) {
 		Serial.println("writing");
-		eeWriteVerify(0, 0);
+		eeWriteVerify(ulStart, ulCnt);
+		Serial.println("done");
 	}
-
+	else if(!strcmp(szCmd, "erase")) {
+		Serial.println("erasing");
+		eeErase();
+		Serial.println("done");
+	}
   s_bSerialRxReady = false;
   s_ubSerialBfrLength = 0;
 }
 
 void loop() {
   serialProcessRx();
-	eeLow();
+	eeRelax();
   delay(200);
 }
 
