@@ -29,6 +29,16 @@ void setup() {
 
 }
 
+void eeLow(void) {
+	// Set all lines low
+	PORTL = 0;
+	PORTK = 0;
+	PORTB = 0;
+
+	// Set control lines low
+	PORTG &= ~(_BV(PG0) | _BV(PG2));
+}
+
 uint16_t eeReadWord(uint32_t addr) {
   // Set WORD mode
   PORTB &= ~_BV(PB2);
@@ -52,6 +62,35 @@ uint16_t eeReadWord(uint32_t addr) {
   return uwRet;
 }
 
+uint8_t eeWriteVerify(uint32_t ulAddr, uint16_t uwVal) {
+  // Set WORD mode
+  PORTB &= ~_BV(PB2);
+
+  // Set address lines
+  PORTL = ulAddr & 0xFF;
+  PORTK = (ulAddr >> 8) & 0xFF;
+  PORTB = (ulAddr >> 16) & 0b11;
+
+	// TODO Set /E line lo, /G line hi
+	// TODO Wait for write
+
+	// Set /E line hi, /G line lo
+	PORTG |= _BV(PG0);
+  PORTG &= ~ _BV(PG2);
+  delayMicroseconds(1);
+
+	while(1) {}
+
+  // Read from data lines
+  uint16_t uwRet;
+  uwRet = (PINC << 8) | PINA;
+
+
+  // Set control lines hi
+  PORTG |= _BV(PG0) | _BV(PG2);
+  return 0;
+}
+
 static uint8_t onesInWord(uint16_t w) {
 	uint8_t cnt = 0;
 	for(uint8_t i = 0; i < 16; ++i) {
@@ -67,17 +106,16 @@ static void serialProcessRx() {
   if(!s_bSerialRxReady)
     return;
 
-  uint32_t lStart, lCnt;
+  uint32_t ulStart, ulCnt;
   char szCmd[10];
-  sscanf(s_szSerialBfr, "%s %lu %lu", szCmd, &lStart, &lCnt);
+  sscanf(s_szSerialBfr, "%s %lu %lu", szCmd, &ulStart, &ulCnt);
   if(!strcmp(szCmd, "read")) {
     // Read mode
-    int i;
     uint16_t w;
     char bfr[255];
-    sprintf(bfr, "start: %lu, cnt: %lu", lStart, lCnt);
+    sprintf(bfr, "start: %lu, cnt: %lu", ulStart, ulCnt);
     Serial.println(bfr);
-    for(i = lStart; i < lCnt; ++i) {
+    for(uint32_t i = ulStart; i < ulStart+ulCnt; ++i) {
       w = eeReadWord(i);
       w = (w << 8) | (w >> 8); // Endian swap
       Serial.write((char*)&w, 2);
@@ -86,10 +124,10 @@ static void serialProcessRx() {
   else if(!strcmp(szCmd, "mask")) {
     // Test mode
 		char bfr[255];
-		sprintf(bfr, "mask: %lu, cnt: %lu", lStart, lCnt);
+		sprintf(bfr, "mask: %lu, cnt: %lu", ulStart, ulCnt);
 		Serial.println(bfr);
 		uint16_t mask = 0;
-    for(int i = lStart; i < lCnt; ++i) {
+    for(uint32_t i = ulStart; i < ulStart+ulCnt; ++i) {
       uint16_t w = eeReadWord(i);
       w = (w << 8) | (w >> 8); // Endian swap
 			mask |= w;
@@ -101,14 +139,14 @@ static void serialProcessRx() {
   else if(!strcmp(szCmd, "chkerase")) {
     // Erase check mode
 		char bfr[255];
-		sprintf(bfr, "erase chk: %lu, cnt: %lu", lStart, lCnt);
+		sprintf(bfr, "erase chk: %lu, cnt: %lu", ulStart, ulCnt);
 		Serial.println(bfr);
 		uint32_t ulOnesCnt = 0;
-    for(int i = lStart; i < lCnt; ++i) {
+    for(uint32_t i = ulStart; i < ulStart+ulCnt; ++i) {
       uint16_t w = eeReadWord(i);
       ulOnesCnt += onesInWord(w);
 		}
-		uint32_t ulBitCnt = (lCnt*16);
+		uint32_t ulBitCnt = (ulCnt*16);
 		uint32_t ulZerosCnt = ulBitCnt - ulOnesCnt;
 		double percentage = (ulZerosCnt *100.0)/ulBitCnt;
 		char szDbl[10];
@@ -116,6 +154,10 @@ static void serialProcessRx() {
 		sprintf(bfr, "Zeros: %lu / %lu (%s%%)", ulZerosCnt, ulBitCnt, szDbl);
 		Serial.println(bfr);
   }
+	else if(!strcmp(szCmd, "write")) {
+		Serial.println("writing");
+		eeWriteVerify(0, 0);
+	}
 
   s_bSerialRxReady = false;
   s_ubSerialBfrLength = 0;
@@ -123,6 +165,7 @@ static void serialProcessRx() {
 
 void loop() {
   serialProcessRx();
+	eeLow();
   delay(200);
 }
 
