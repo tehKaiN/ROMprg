@@ -5,13 +5,13 @@ EELAYER END
 $Descr A4 8268 11693 portrait
 encoding utf-8
 Sheet 1 1
-Title ""
+Title "Sega Megadrive cart programmer - 29f based"
 Date ""
 Rev ""
 Comp ""
-Comment1 ""
-Comment2 ""
-Comment3 ""
+Comment1 "file, You can obtain one at http://mozilla.org/MPL/2.0/."
+Comment2 "License, v. 2.0. If a copy of the MPL was not distributed with this"
+Comment3 "This Source Code Form is subject to the terms of the Mozilla Public"
 Comment4 ""
 $EndDescr
 $Comp
@@ -20,7 +20,7 @@ U 1 1 5B94F068
 P 2850 3950
 F 0 "XA1" H 2850 1570 60  0000 C CNN
 F 1 "Arduino_Mega2560_Shield" H 2850 1464 60  0000 C CNN
-F 2 "Arduino:Arduino_Mega2560_Shield" H 3550 6700 60  0001 C CNN
+F 2 "romprg:Arduino_Mega2560_Shield_no_icsp" H 3550 6700 60  0001 C CNN
 F 3 "https://store.arduino.cc/arduino-mega-2560-rev3" H 3550 6700 60  0001 C CNN
 	1    2850 3950
 	1    0    0    -1  

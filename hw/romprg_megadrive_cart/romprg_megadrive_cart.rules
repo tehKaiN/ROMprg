@@ -4,14 +4,14 @@
     fortyfive_degree
   )
   (autoroute_settings
-    (fanout off)
+    (fanout on)
     (autoroute on)
     (postroute on)
     (vias on)
     (via_costs 50)
     (plane_via_costs 5)
     (start_ripup_costs 100)
-    (start_pass_no 668)
+    (start_pass_no 130)
     (layer_rule F.Cu
       (active on)
       (preferred_direction horizontal)

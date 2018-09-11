@@ -5,13 +5,13 @@ EELAYER END
 $Descr A4 8268 11693 portrait
 encoding utf-8
 Sheet 1 1
-Title ""
+Title "Sega Megadrive cart programmer - 29f based"
 Date ""
-Rev ""
+Rev "1"
 Comp ""
-Comment1 ""
-Comment2 ""
-Comment3 ""
+Comment1 "file, You can obtain one at http://mozilla.org/MPL/2.0/."
+Comment2 "License, v. 2.0. If a copy of the MPL was not distributed with this"
+Comment3 "This Source Code Form is subject to the terms of the Mozilla Public"
 Comment4 ""
 $EndDescr
 $Comp
