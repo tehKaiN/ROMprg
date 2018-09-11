@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name arduino)(type Legacy)(uri C:/prg/_git/romprg/deps/arduino-kicad-library/arduino.lib)(options "")(descr ""))
+  (lib (name megadrive)(type Legacy)(uri C:/prg/_git/romprg/deps/smdRomCart/lib/megadrive.lib)(options "")(descr ""))
+)
