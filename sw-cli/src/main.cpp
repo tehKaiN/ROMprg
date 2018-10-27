@@ -2,16 +2,10 @@
 #include <vector>
 #include <serial/serial.h>
 #include <fmt/format.h>
+#include "options.hpp"
 
 #define RECV_BUF_LEN 1024
 
-enum class tOp: uint8_t {
-	INVALID,
-	READ,
-	WRITE,
-	READ_ROM,
-	WRITE_ROM
-};
 
 static std::string s_szOutName = "";
 
@@ -19,18 +13,21 @@ static std::vector<std::string> s_vChips = {"megadrive"};
 
 static void printUsage(const char *szAppName) {
 	// romprg -c megadrive -rr -s 512k -n dupa
-	fmt::print("Usage: {} port chip op args\n", szAppName);
+	fmt::print("Usage:\n\t{} port chip op args\n", szAppName);
 	auto vPorts = serial::list_ports();
-	fmt::print("Available ports: {}\n", vPorts.size());
+	fmt::print("\nAvailable ports: {}\n", vPorts.size());
 	for(auto &Port: vPorts) {
 		fmt::print("\t{}\t\t{}\n", Port.port, Port.description);
 	}
-	fmt::print("Available chips:\n");
+	fmt::print("\nAvailable chips:\n");
 	for(auto &Chip: s_vChips) {
 		fmt::print("\t{}\n", Chip);
 	}
-	fmt::print("Available ops:\n");
-	fmt::print("\tread start count path - read to file given count of words from ROM, beginning from offs");
+	fmt::print("\nAvailable ops:\n");
+	for(auto &Op: g_mOpFromString) {
+		fmt::print("\t{}\t\t{}\n", Op.first, g_mOpDescription.at(Op.second));
+	}
+	fmt::print("\nTo get op-specific help, write port, chip & op without further args\n");
 }
 
 int main(int32_t lArgCnt, char *pArgs[]) {
