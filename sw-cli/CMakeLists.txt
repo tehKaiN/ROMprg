@@ -20,5 +20,10 @@ find_package(serial REQUIRED)
 include_directories(${serial_INCLUDE_DIRS})
 target_link_libraries(romprg serial)
 
+#fmt
+find_package(fmt REQUIRED)
+include_directories(${fmt_INCLUDE_DIRS})
+target_link_libraries(romprg fmt::fmt)
+
 # Linking - custom flags
 # target_link_libraries(app ${LINKER_FLAGS})

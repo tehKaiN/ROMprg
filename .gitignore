@@ -2,3 +2,5 @@
 *.dsn
 
 *.ses
+
+sw-cli/romprg\.exe

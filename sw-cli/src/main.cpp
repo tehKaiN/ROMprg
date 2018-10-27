@@ -1,21 +1,36 @@
-#include <cstdio>
 #include <thread>
+#include <vector>
 #include <serial/serial.h>
+#include <fmt/format.h>
 
 #define RECV_BUF_LEN 1024
 
+enum class tOp: uint8_t {
+	INVALID,
+	READ,
+	WRITE,
+	READ_ROM,
+	WRITE_ROM
+};
+
+static std::string s_szOutName = "";
+
+static std::vector<std::string> s_vChips = {"megadrive"};
+
 static void printUsage(const char *szAppName) {
-		printf("Usage: %s port op args\n", szAppName);
-		auto vPorts = serial::list_ports();
-		printf("Available ports: %d\n", vPorts.size());
-		for(auto &Port: vPorts) {
-			printf(
-				"\t%s\t\t%s\n",
-				Port.port.c_str(), Port.description.c_str()
-			);
-		}
-		printf("Available ops:\n");
-		printf("\tread start count path - read to file given count of words from ROM, beginning from offs");
+	// romprg -c megadrive -rr -s 512k -n dupa
+	fmt::print("Usage: {} port chip op args\n", szAppName);
+	auto vPorts = serial::list_ports();
+	fmt::print("Available ports: {}\n", vPorts.size());
+	for(auto &Port: vPorts) {
+		fmt::print("\t{}\t\t{}\n", Port.port, Port.description);
+	}
+	fmt::print("Available chips:\n");
+	for(auto &Chip: s_vChips) {
+		fmt::print("\t{}\n", Chip);
+	}
+	fmt::print("Available ops:\n");
+	fmt::print("\tread start count path - read to file given count of words from ROM, beginning from offs");
 }
 
 int main(int32_t lArgCnt, char *pArgs[]) {
@@ -31,7 +46,7 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 		int32_t lBaud = 76800;
 		std::string szPort(pArgs[1]);
 		serial::Serial Serial(szPort, lBaud, serial::Timeout::simpleTimeout(200));
-		printf("Connected to %s@%d\n", pArgs[1], lBaud);
+		fmt::print("Connected to {}@{}\n", pArgs[1], lBaud);
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 
 		if(!strcmp(pArgs[2], "read")) {
@@ -42,7 +57,7 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 			uint32_t ulOffs = strtoul(pArgs[3], nullptr, 0);
 			uint32_t ulCnt = strtoul(pArgs[4], nullptr, 0);
 			if(ulOffs == ULONG_MAX || ulCnt == ULONG_MAX) {
-				printf("ERR: Invalid offs/cnt\n");
+				fmt::print("ERR: Invalid offs/cnt\n");
 				printUsage(pArgs[0]);
 				return 0;
 			}
@@ -54,22 +69,22 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 			for(uint32_t i = 0; i < ulCnt; ++i) {
 				uint8_t pBfr[2];
 				if(!Serial.read(pBfr, 2)) {
-					printf("ERR: Read error at offset %d+%u\n", ulOffs, i);
+					fmt::print("ERR: Read error at offset {}+{}\n", ulOffs, i);
 					return 0;
 				}
 				fwrite(pBfr, sizeof(uint16_t), 1, pFile);
 			}
 			fclose(pFile);
-			printf("All done!\n");
+			fmt::print("All done!\n");
 		}
 		else {
-			printf("ERR: Unknown cmd\n");
+			fmt::print("ERR: Unknown cmd\n");
 			printUsage(pArgs[0]);
 			return 0;
 		}
 	}
 	catch(std::exception Exc) {
-		printf("Exception: %s", Exc.what());
+		fmt::print("Exception: {}", Exc.what());
 	}
 
 	return 0;
