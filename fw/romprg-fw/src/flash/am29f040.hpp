@@ -1,7 +1,7 @@
-#ifndef _ROMPRG_FW_AM29F040_H_
-#define _ROMPRG_FW_AM29F040_H_
+#ifndef _ROMPRG_FW_FLASH_AM29F040_H_
+#define _ROMPRG_FW_FLASH_AM29F040_H_
 
-#include "flash.hpp"
+#include "../flash.hpp"
 
 /**
  * @brief Class for programming AM29F040 chip.
@@ -13,8 +13,8 @@ public:
 	tAm29f040(void);
 
 	// Implementation of tFlash
-	virtual bool writeByte(uint32_t ulAddr, uint8_t ubValue);
-	virtual uint8_t readByte(uint32_t ulAddr);
+	virtual bool writeData(uint8_t ubDepth,  uint32_t ulAddr, uint32_t ulValue);
+	virtual bool readData(uint8_t ubDepth, uint32_t ulAddr, uint32_t &ulResult);
 	virtual bool eraseAll(void);
 	virtual void relax(void);
 
@@ -32,4 +32,4 @@ private:
 	bool waitToggle(void);
 };
 
-#endif // _ROMPRG_FW_AM29F040_H_
+#endif // _ROMPRG_FW_FLASH_AM29F040_H_

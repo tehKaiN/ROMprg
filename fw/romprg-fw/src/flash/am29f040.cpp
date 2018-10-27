@@ -46,31 +46,37 @@ tAm29f040::tAm29f040(void) {
 	DDR_NOE |= _BV(PIN_NOE);
 }
 
-bool tAm29f040::writeByte(uint32_t ulAddr, uint8_t ubValue) {
+bool tAm29f040::writeData(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulValue) {
+	if(ubDepth != 1) {
+		return false;
+	}
 	writeCycle(0x555, 0xAA);
 	writeCycle(0x2AA, 0x55);
 	writeCycle(0x555, 0xA0);
-	writeCycle(ulAddr, ubValue);
+	writeCycle(ulAddr, ulValue);
 
 	// Verify
-	uint8_t ubVerify;
+	uint32_t ulVerify;
 	do {
-		ubVerify = readByte(ulAddr);
+		readData(1, ulAddr, ulVerify);
 		Serial.print("Byte: ");
-		Serial.println(ubVerify);
-		if((ubVerify & _BV(7)) == (ubValue & _BV(7))) {
-			return 1;
+		Serial.println(ulVerify);
+		if((ulVerify & _BV(7)) == (ulValue & _BV(7))) {
+			return true;
 		}
-	} while(ubVerify & _BV(7));
+	} while(ulVerify & _BV(7));
 
-	ubVerify = readByte(ulAddr);
-	if((ubVerify & _BV(7)) == (ubValue & _BV(7))) {
-		return 1;
+	readData(1, ulAddr, ulVerify);
+	if((ulVerify & _BV(7)) == (ulValue & _BV(7))) {
+		return true;
 	}
-	return 0;
+	return false;
 }
 
-uint8_t tAm29f040::readByte(uint32_t ulAddr) {
+bool tAm29f040::readData(uint8_t ubDepth, uint32_t ulAddr, uint32_t &ulResult) {
+	if(ubDepth != 1) {
+		return false;
+	}
   // Set address lines
   PORT_ADDR_LO = ulAddr & 0xFF;
   PORT_ADDR_MID = (ulAddr >> 8) & 0xFF;
@@ -89,14 +95,13 @@ uint8_t tAm29f040::readByte(uint32_t ulAddr) {
   // delayMicroseconds(1);
 
   // Read from data lines
-  uint8_t ubRead;
-  ubRead = (PIN_DATA_HI << 8) | PIN_DATA_LO;
+  ulResult = (PIN_DATA_HI << 8) | PIN_DATA_LO;
 
   // Set control lines hi
 	PORT_NE |= _BV(PIN_NE);
 	PORT_NOE |= _BV(PIN_NOE);
 
-  return ubRead;
+	return true;
 }
 
 void tAm29f040::relax(void) {
@@ -145,18 +150,18 @@ void tAm29f040::writeCycle(uint32_t ulAddr, uint8_t ubData) {
 
 bool tAm29f040::waitToggle(void) {
 	constexpr uint8_t ubToggleMask = _BV(2) | _BV(6);
-	uint8_t ubStatusOld, ubStatus;
-	ubStatusOld = readByte(0);
+	uint32_t ulStatusOld, ulStatus;
+	readData(1, 0, ulStatusOld);
 	do {
-		ubStatus = readByte(0);
-		if((ubStatusOld & ubToggleMask) == (ubStatus & ubToggleMask)) {
+		readData(1, 0, ulStatus);
+		if((ulStatusOld & ubToggleMask) == (ulStatus & ubToggleMask)) {
 			return true;
 		}
-		ubStatusOld = ubStatus;
-	} while(!(ubStatus & _BV(5)));
-	ubStatusOld = readByte(0);
-	ubStatus = readByte(0);
-	if((ubStatusOld & ubToggleMask) == (ubStatus & ubToggleMask)) {
+		ulStatusOld = ulStatus;
+	} while(!(ulStatus & _BV(5)));
+	readData(1, 0, ulStatusOld);
+	readData(1, 0, ulStatus);
+	if((ulStatusOld & ubToggleMask) == (ulStatus & ubToggleMask)) {
 		return true;
 	}
 	return false;

@@ -41,15 +41,16 @@ public:
 	 * @param ubValue Value to be written.
 	 * @return True on success, otherwise false.
 	 */
-	virtual bool writeByte(uint32_t ulAddr, uint8_t ubValue) = 0;
+	virtual bool writeData(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulValue) = 0;
 
 	/**
 	 * @brief Reads byte from specified address.
 	 *
+	 * @param ubDepth Bytes per native word.
 	 * @param ulAddr Byte address from which read should occur.
 	 * @return Byte read from memory.
 	 */
-	virtual uint8_t readByte(uint32_t ulAddr) = 0;
+	virtual bool readData(uint8_t ubDepth, uint32_t ulAddr, uint32_t &ulResult) = 0;
 
 	/**
 	 * @brief Erases whole chip.

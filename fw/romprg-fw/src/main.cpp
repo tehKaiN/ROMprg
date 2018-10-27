@@ -1,5 +1,6 @@
 #include <Arduino.h>
-#include "am29f040.hpp"
+#include "flash.hpp"
+// #include "flash/am29f040.hpp"
 
 const uint8_t s_ubSerialBfrMaxLength = 150;
 bool s_bSerialRxReady = false;
@@ -13,6 +14,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(76800);
   pinMode(13, OUTPUT);
+	Serial.println("romprg v.0.1");
   // Usable ports:
   // PORTB - scattered on DIO & PWM region
   // PORTF, PORTK - analog in region

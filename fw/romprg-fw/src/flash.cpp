@@ -1,6 +1,7 @@
 #include "flash.hpp"
 #include <Arduino.h>
-#include "am29f040.hpp"
+#include "flash/am29f040.hpp"
+#include "flash/megadrive.hpp"
 
 static uint8_t onesCount(uint32_t ulData) {
 	uint8_t ubCnt = 0;
@@ -43,6 +44,9 @@ bool tFlash::processCommand(const char *szCmd) {
 		);
 		if(ubArgCnt == 3) {
 			isOk = cmdWrite(pArgs[0], pArgs[1], pArgs[2]);
+			if(!isOk) {
+				Serial.println("ERR: write");
+			}
 		}
 	}
 	else if(!strcmp(szCmdType, "erase_all") && ubArgCnt == 255) {
@@ -62,23 +66,37 @@ tFlash *tFlash::fromString(const char *szChip) {
 	if(!strcmp(szChip, "am29f040")) {
 		return new tAm29f040();
 	}
+	if(!strcmp(szChip, "megadrive")) {
+		return new tMegadrive();
+	}
 	return nullptr;
 }
 
 bool tFlash::cmdRead(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulLength) {
 	// Read mode
-	if(ubDepth == 1) {
+	if(ubDepth == 1 || ubDepth == 2 || ubDepth == 4) {
 		char szBfr[4];
 		for(uint32_t i = ulAddr; i < ulAddr + ulLength; ++i) {
-			uint8_t ubRead = readByte(i);
-			sprintf(szBfr, "%02x ", ubRead);
-			Serial.print(szBfr);
+			uint32_t ulRead;
+			bool isOk = readData(ubDepth, i, ulRead);
+			if(isOk) {
+				for(uint8_t j = ubDepth; j--;) {
+					// sprintf(szBfr, "%02x ", (ulRead >> (8*j)) & 0xFF);
+					// Serial.print(szBfr);
+					uint8_t c = (ulRead >> (8*j)) & 0xFF;
+					Serial.write(c);
+				}
+			}
+			else {
+				Serial.println();
+				Serial.print("ERR: Problem while reading addr:");
+				Serial.println(ulAddr+i);
+				return false;
+			}
 		}
 		Serial.println();
 	}
 	else {
-		// TODO: add read depth 2
-		// TODO: add read depth 4
 		Serial.print("ERR: Unsupported depth: ");
 		Serial.println(ubDepth);
 		return false;
@@ -87,24 +105,16 @@ bool tFlash::cmdRead(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulLength) {
 }
 
 bool tFlash::cmdWrite(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulData) {
-	if(ubDepth == 1) {
-		return writeByte(ulAddr, ulData);
-	}
-	else {
-		// TODO: add write depth 2
-		// TODO: add write depth 4
-		Serial.print("ERR: Unsupported depth: ");
-		Serial.println(ubDepth);
-		return false;
-	}
+	return writeData(ubDepth, ulAddr, ulData);
 }
 
 bool tFlash::cmdMask(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulLength) {
 	if(ubDepth == 1) {
 		uint8_t ubMask = 0;
 		for(uint32_t i = ulAddr; i < ulAddr + ulLength; ++i) {
-			uint8_t ubRead = readByte(i);
-			ubMask |= ubRead;
+			uint32_t ulRead;
+			bool isOk = readData(1, i, ulRead);
+			ubMask |= ulRead;
 		}
 		char szBfr[3];
 		sprintf(szBfr, "%02x", ubMask);
@@ -125,8 +135,9 @@ bool tFlash::cmdChkErase(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulLength) {
 	// Erase check mode
 	uint32_t ulOnesCnt = 0;
 	for(uint32_t i = ulAddr; i < ulAddr + ulLength; ++i) {
-		uint8_t ubRead = readByte(i);
-		ulOnesCnt += onesCount(ubRead);
+		uint32_t ulRead;
+		bool isOk = readData(1, i, ulRead);
+		ulOnesCnt += onesCount(ulRead);
 	}
 	uint32_t ulBitCnt = (ulLength*8);
 	uint32_t ulZerosCnt = ulBitCnt - ulOnesCnt;
