@@ -58,7 +58,6 @@ static void serialProcessRx() {
 
 void loop() {
   serialProcessRx();
-  delay(200);
 }
 
 void serialEvent() {
