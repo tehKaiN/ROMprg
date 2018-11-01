@@ -75,7 +75,7 @@ bool tMegadrive::writeData(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulValue) {
 }
 
 bool tMegadrive::readData(uint8_t ubDepth, uint32_t ulAddr, uint32_t &ulResult) {
-	const uint16_t ubTime = 1;
+	const uint16_t ubTime = 2;
 	if(ubDepth != 2) {
 		return false;
 	}
@@ -108,7 +108,7 @@ bool tMegadrive::readData(uint8_t ubDepth, uint32_t ulAddr, uint32_t &ulResult) 
 }
 
 void tMegadrive::relax(void) {
-	const uint8_t ubTime = 1;
+	const uint8_t ubTime = 2;
   // Set control lines hi
 	PORT_NOE |= _BV(PIN_NOE);
 	PORT_NE |= _BV(PIN_NE);
