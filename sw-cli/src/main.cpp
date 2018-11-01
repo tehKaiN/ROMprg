@@ -1,5 +1,6 @@
 #include <thread>
 #include <vector>
+#include <chrono>
 #include <serial/serial.h>
 #include <fmt/format.h>
 #include "options.hpp"
@@ -107,13 +108,13 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 	try {
 		int32_t lBaud = 76800;
 		// Connect do romprg
-		serial::Serial Serial(s_szPort, lBaud, serial::Timeout::simpleTimeout(200));
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+		serial::Serial Serial(s_szPort, lBaud, serial::Timeout::simpleTimeout(1000));
+		std::this_thread::sleep_for(std::chrono::seconds(2));
 		if(Serial.readline(100, "\n").substr(0, 6) == "romprg") {
 			fmt::print("Connected to {}@{}\n", s_szPort, lBaud);
 		}
 		else {
-			fmt::print("ERR: Unknown device on {}@{} failed\n", s_szPort, lBaud);
+			fmt::print("ERR: Unknown device on {}@{}\n", s_szPort, lBaud);
 			return 1;
 		}
 
@@ -139,9 +140,14 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 
 			Serial.flushInput();
 			FILE *pFile = fopen(s_szOutName.c_str(), "wb");
+			auto TimeEnd = std::chrono::system_clock::now();
+			auto TimeStart = std::chrono::system_clock::now();
 			for(auto k = 0; k < ulKilos; ++k) {
 				// Send cmd
-				fmt::print("\r{}/{}", k, ulKilos);
+				float fSpeed = 1000.0 / std::chrono::duration_cast<std::chrono::milliseconds>(TimeEnd - TimeStart).count();
+				fmt::print("\r{}/{} ({:.2f}%, {:.2f}KB/s)", k, ulKilos, k*100.0 / ulKilos, fSpeed);
+				TimeStart = std::chrono::system_clock::now();
+
 				Serial.write(fmt::format("read 2 {} 512\n", k * 512));
 
 				// Read init response
@@ -156,12 +162,13 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 				// Read actual data + CRLF
 				uint8_t pData[1024+2];
 				int32_t lBytesRead = 0;
-				for(auto i = 0; i < 1024+2; ++i) {
-					int32_t lRead = Serial.read(&pData[i], 1);
-					if(lRead) {
-						++lBytesRead;
-					}
+				uint8_t ubBurst = 2;
+				for(auto i = 0; i < 1024; i += ubBurst) {
+					int32_t lRead = Serial.read(&pData[i], ubBurst);
+					lBytesRead += lRead;
 				}
+				fmt::print(" {} ", lBytesRead);
+				Serial.readline(100, "\n");
 
 				// Read end response
 				szResponse = rtrim(Serial.readline(100, "\n"));
@@ -171,7 +178,8 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 				}
 
 				// Put them into file
-				fwrite(pData, 1, 512, pFile);
+				fwrite(pData, 1, 1024, pFile);
+				TimeEnd = std::chrono::system_clock::now();
 			}
 			fclose(pFile);
 			fmt::print("All done!\n");
