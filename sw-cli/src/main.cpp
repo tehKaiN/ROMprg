@@ -106,7 +106,7 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 	}
 
 	try {
-		int32_t lBaud = 76800;
+		int32_t lBaud = 250000;
 		// Connect do romprg
 		serial::Serial Serial(s_szPort, lBaud, serial::Timeout::simpleTimeout(1000));
 		std::this_thread::sleep_for(std::chrono::seconds(2));

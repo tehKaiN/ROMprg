@@ -75,15 +75,12 @@ tFlash *tFlash::fromString(const char *szChip) {
 bool tFlash::cmdRead(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulLength) {
 	// Read mode
 	if(ubDepth == 1 || ubDepth == 2 || ubDepth == 4) {
-		char szBfr[4];
 		for(uint32_t i = ulAddr; i < ulAddr + ulLength; ++i) {
 			uint32_t ulRead;
 			bool isOk = readData(ubDepth, i, ulRead);
 			if(isOk) {
 				for(uint8_t j = ubDepth; j--;) {
-					// sprintf(szBfr, "%02x ", (ulRead >> (8*j)) & 0xFF);
-					// Serial.print(szBfr);
-					uint8_t c = (ulRead >> (8*j)) & 0xFF;
+					uint8_t c = (ulRead >> (j * 8)) & 0xFF;
 					Serial.write(c);
 				}
 			}

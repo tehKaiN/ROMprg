@@ -12,7 +12,7 @@ tFlash *s_pFlash = nullptr;
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(76800);
+  Serial.begin(250000);
   pinMode(13, OUTPUT);
 	Serial.println("romprg v.0.1");
   // Usable ports:
