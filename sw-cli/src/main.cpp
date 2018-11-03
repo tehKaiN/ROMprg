@@ -5,11 +5,13 @@
 #include <fmt/format.h>
 #include "options.hpp"
 #include "trim.hpp"
+#include "romprg.hpp"
 
 #define RECV_BUF_LEN 1024
 
 static std::string s_szOutName = "";
 static std::string s_szPort = "";
+static bool s_isAutoSize = false;
 
 static std::vector<std::string> s_vChips = {"megadrive"};
 
@@ -39,6 +41,7 @@ static void printUsageDump(void) {
 		"\t-s\t\tSize in bytes divisible by 1024.\n"
 		"\t\t\tYou can use case-insensitive suffixes: 512k, 1m\n"
 	);
+	fmt::print("\t-as\t\tAutosize - will try to determine total size\n");
 }
 
 int32_t parseSize(std::string szSize) {
@@ -91,6 +94,9 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 				fmt::print("Invalid size: '{}'", lSize);
 			}
 		}
+		else if(pArgs[i] == std::string("-as")) {
+			s_isAutoSize = true;
+		}
 		else if(pArgs[i] == std::string("-n") && i+1 < lArgCnt) {
 			// Name
 			s_szOutName = pArgs[i+1];
@@ -106,29 +112,31 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 	}
 
 	try {
-		int32_t lBaud = 250000;
-		// Connect do romprg
-		serial::Serial Serial(s_szPort, lBaud, serial::Timeout::simpleTimeout(1000));
-		std::this_thread::sleep_for(std::chrono::seconds(2));
-		if(Serial.readline(100, "\n").substr(0, 6) == "romprg") {
-			fmt::print("Connected to {}@{}\n", s_szPort, lBaud);
+		const uint32_t ulBaud = 250000;
+		tRomPrg RomPrg(s_szPort, ulBaud);
+		if(RomPrg.isOpened()) {
+			fmt::print("Connected to {}@{}\n", s_szPort, ulBaud);
 		}
 		else {
-			fmt::print("ERR: Unknown device on {}@{}\n", s_szPort, lBaud);
+			fmt::print("ERR: Unknown device on {}@{}\n", s_szPort, ulBaud);
 			return 1;
 		}
 
 		// Set chip
-		Serial.write(fmt::format("chip {}\n", szChip));
-		if(rtrim(Serial.readline(100, "\n")) != "OK") {
+		if(!RomPrg.setChip(szChip)) {
 			fmt::print("ERR: Unsupported chip/device: {}", szChip);
 			return 1;
 		}
 
 		// Process command
 		std::string szResponse;
+		using std::chrono::duration_cast;
+		using std::chrono::milliseconds;
 		if(eOp == tOp::DEV_DUMP) {
-			if(lSize <= 0 || (lSize % 1024) != 0) {
+			if(s_isAutoSize) {
+
+			}
+			else if (lSize <= 0 || (lSize % 1024) != 0) {
 				fmt::print("ERR: Size unspecified or not divisible by 1024\n");
 				printUsageDump();
 				return 1;
@@ -138,51 +146,31 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 			}
 			uint32_t ulKilos = lSize / 1024;
 
-			Serial.flushInput();
 			FILE *pFile = fopen(s_szOutName.c_str(), "wb");
-			auto TimeEnd = std::chrono::system_clock::now();
 			auto TimeStart = std::chrono::system_clock::now();
 			for(auto k = 0; k < ulKilos; ++k) {
-				// Send cmd
-				float fSpeed = 1000.0 / std::chrono::duration_cast<std::chrono::milliseconds>(TimeEnd - TimeStart).count();
-				fmt::print("\r{}/{} ({:.2f}%, {:.2f}KB/s)", k, ulKilos, k*100.0 / ulKilos, fSpeed);
-				TimeStart = std::chrono::system_clock::now();
+				auto PartStart = std::chrono::system_clock::now();
 
-				Serial.write(fmt::format("read 2 {} 512\n", k * 512));
-
-				// Read init response
-				szResponse = rtrim(Serial.readline(100, "\n"));
-				if(szResponse != "START read") {
-					fmt::print(
-						"ERR: Wrong initialization text received: '{}'\n", szResponse
-					);
-					return 1;
-				}
-
-				// Read actual data + CRLF
-				uint8_t pData[1024+2];
-				int32_t lBytesRead = 0;
-				uint8_t ubBurst = 2;
-				for(auto i = 0; i < 1024; i += ubBurst) {
-					int32_t lRead = Serial.read(&pData[i], ubBurst);
-					lBytesRead += lRead;
-				}
-				fmt::print(" {} ", lBytesRead);
-				Serial.readline(100, "\n");
-
-				// Read end response
-				szResponse = rtrim(Serial.readline(100, "\n"));
-				if(szResponse != "SUCC") {
-					fmt::print("ERR: invalid end response: '{}'\n", szResponse);
+				uint8_t pData[1024];
+				if(!RomPrg.readBytes(2, pData, k*512, 512)) {
+					fmt::print("ERR: Read @ offset {}k\n", 2*512, k);
 					return 1;
 				}
 
 				// Put them into file
 				fwrite(pData, 1, 1024, pFile);
-				TimeEnd = std::chrono::system_clock::now();
+				auto PartEnd = std::chrono::system_clock::now();
+
+				float fSpeed = 1000.0 / duration_cast<milliseconds>(PartEnd - PartStart).count();
+				fmt::print(
+					"\r{}: {}/{} ({:.2f}%, {:.2f}KB/s)", s_szOutName,
+					k+1, ulKilos, (k+1)*100.0 / ulKilos, fSpeed
+				);
 			}
+			auto TimeEnd = std::chrono::system_clock::now();
 			fclose(pFile);
-			fmt::print("All done!\n");
+			float fTotalTime = duration_cast<milliseconds>(TimeEnd - TimeStart).count() / 1000.0;
+			fmt::print("\nAll done! Total time: {:.2f}s\n", fTotalTime);
 		}
 		else {
 			fmt::print("ERR: Unknown cmd\n");

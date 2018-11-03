@@ -1,3 +1,6 @@
+#ifndef _ROMPRG_TRIM_HPP_
+#define _ROMPRG_TRIM_HPP_
+
 #include <algorithm>
 #include <cctype>
 #include <locale>
@@ -42,3 +45,5 @@ static inline std::string trim(std::string s) {
     trimRef(s);
     return s;
 }
+
+#endif // _ROMPRG_TRIM_HPP_
