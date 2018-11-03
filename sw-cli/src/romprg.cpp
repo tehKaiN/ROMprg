@@ -44,8 +44,8 @@ bool tRomPrg::readBytes(uint8_t ubDepth, uint8_t *pDest, uint32_t ulOffs, uint32
 	// Read actual data + CRLF
 	int32_t lBytesRead = 0;
 	uint8_t ubBurst = 4;
-	while(lBytesRead < 1024) {
-		int32_t lRead = m_pSerial->read(&pDest[lBytesRead], 1024-lBytesRead);
+	while(lBytesRead < ulSize * ubDepth) {
+		int32_t lRead = m_pSerial->read(&pDest[lBytesRead], ulSize * ubDepth - lBytesRead);
 		lBytesRead += lRead;
 		if(lRead == 0) {
 			fmt::print("ERR: Device stopped responding\n");

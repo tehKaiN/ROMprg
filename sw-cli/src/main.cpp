@@ -6,6 +6,7 @@
 #include "options.hpp"
 #include "trim.hpp"
 #include "romprg.hpp"
+#include "megadrive_header.hpp"
 
 #define RECV_BUF_LEN 1024
 
@@ -133,6 +134,21 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 		using std::chrono::duration_cast;
 		using std::chrono::milliseconds;
 		if(eOp == tOp::DEV_DUMP) {
+			if(s_szOutName == "") {
+				// Get header
+				tMegadriveHeader sHeader;
+				bool isReadOk = RomPrg.readBytes(
+					2, reinterpret_cast<uint8_t*>(&sHeader),
+					0x100/2, sizeof(tMegadriveHeader)/2
+				);
+				if(!isReadOk) {
+					fmt::print("ERR: Couldn't read ROM header\n");
+					return 1;
+				}
+				fmt::print("Deduced ROM name: {}\n", sHeader.getDomesticName());
+				s_szOutName = fmt::format("{}.bin", sHeader.getDomesticName());
+			}
+
 			if(s_isAutoSize) {
 
 			}
@@ -140,9 +156,6 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 				fmt::print("ERR: Size unspecified or not divisible by 1024\n");
 				printUsageDump();
 				return 1;
-			}
-			if(s_szOutName == "") {
-				s_szOutName = fmt::format("{}.bin", szChip);
 			}
 			uint32_t ulKilos = lSize / 1024;
 
