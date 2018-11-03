@@ -145,12 +145,29 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 					fmt::print("ERR: Couldn't read ROM header\n");
 					return 1;
 				}
-				fmt::print("Deduced ROM name: {}\n", sHeader.getDomesticName());
-				s_szOutName = fmt::format("{}.bin", sHeader.getDomesticName());
+				fmt::print("Deduced ROM name: {}\n", sHeader.getOverseasName());
+				s_szOutName = fmt::format("{}.bin", sHeader.getOverseasName());
 			}
 
 			if(s_isAutoSize) {
-
+				uint8_t pStart[1024], pTest[1024];
+				RomPrg.readBytes(2, pStart, 0, 512);
+				// Try on 64k, 128k, 256k, 512k, 1m, 2m, 4m, 8m, 16m
+				bool isFound = false;
+				for(lSize = 64*1024; lSize <= 16*1024*1024; lSize <<= 1) {
+					RomPrg.readBytes(2, pTest, lSize/2, 512);
+					if(!memcmp(pStart, pTest, 1024)) {
+						isFound = true;
+						break;
+					}
+				}
+				if(!isFound) {
+					fmt::print("Couldn't determine ROM size\n");
+					return 1;
+				}
+				else {
+					fmt::print("Determined ROM size: {}k\n", lSize/1024);
+				}
 			}
 			else if (lSize <= 0 || (lSize % 1024) != 0) {
 				fmt::print("ERR: Size unspecified or not divisible by 1024\n");

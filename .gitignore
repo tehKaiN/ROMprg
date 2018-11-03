@@ -4,3 +4,5 @@
 *.ses
 
 sw-cli/romprg\.exe
+
+*.bin
