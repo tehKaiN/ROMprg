@@ -6,11 +6,11 @@
 // OE is transformed to OE or WE depending on A20 state
 
 // Chip enable
-#define PIN_NE PG0
-#define  PORT_NE PORTG
+#define P_NE PG0
+#define PORT_NE PORTG
 #define DDR_NE DDRG
 // Output enable
-#define PIN_NOE PG1
+#define P_NOE PG1
 #define PORT_NOE PORTG
 #define DDR_NOE DDRG
 
@@ -28,6 +28,8 @@
 #define DDR_DATA_HI DDRC
 #define PIN_DATA_HI PINC
 
+#define ADDR_PRG_LINE 20
+
 tMegadrive::tMegadrive(void) {
   // Data bus
   DDR_DATA_LO = 0; // Lower
@@ -40,9 +42,15 @@ tMegadrive::tMegadrive(void) {
   DDR_ADDR_MID = 0xFF; // Higher - A15..A8
   DDR_ADDR_HI = 0b01111111; // Highest - up to A22..A15, without A23
 
+	PORT_ADDR_LO = 0;
+	PORT_ADDR_MID = 0;
+	PORT_ADDR_HI = 0;
+
   // Control bits
-	DDR_NE |= _BV(PIN_NE);
-	DDR_NOE |= _BV(PIN_NOE);
+	DDR_NE |= _BV(P_NE);
+	DDR_NOE |= _BV(P_NOE);
+	PORT_NE |= _BV(P_NE);
+	DDR_NOE |= _BV(P_NOE);
 }
 
 bool tMegadrive::writeData(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulValue) {
@@ -59,11 +67,11 @@ bool tMegadrive::writeData(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulValue) {
 	// Verify
 	uint32_t ulVerify;
 	do {
-		readData(2, ulAddr, ulVerify);
-		Serial.print("Byte: ");
-		Serial.println(ulVerify);
+		if(!readData(2, ulAddr, ulVerify)) {
+			return false;
+		}
 		if((ulVerify & _BV(7)) == (ulValue & _BV(7))) {
-			return 1;
+			return true;
 		}
 	} while(ulVerify & _BV(7));
 
@@ -92,16 +100,16 @@ bool tMegadrive::readData(uint8_t ubDepth, uint32_t ulAddr, uint32_t &ulResult) 
 
   // Set control lines lo
   delayMicroseconds(ubTime);
-	PORT_NE &= ~ _BV(PIN_NE);
-	PORT_NOE &= ~ _BV(PIN_NOE);
+	PORT_NE &= ~ _BV(P_NE);
+	PORT_NOE &= ~ _BV(P_NOE);
   delayMicroseconds(ubTime);
 
   // Read from data lines
   ulResult = (PIN_DATA_HI << 8) | PIN_DATA_LO;
 
   // Set control lines hi
-	PORT_NOE |= _BV(PIN_NOE);
-	PORT_NE |= _BV(PIN_NE);
+	PORT_NOE |= _BV(P_NOE);
+	PORT_NE |= _BV(P_NE);
   delayMicroseconds(ubTime);
 
   return true;
@@ -110,8 +118,8 @@ bool tMegadrive::readData(uint8_t ubDepth, uint32_t ulAddr, uint32_t &ulResult) 
 void tMegadrive::relax(void) {
 	const uint8_t ubTime = 2;
   // Set control lines hi
-	PORT_NOE |= _BV(PIN_NOE);
-	PORT_NE |= _BV(PIN_NE);
+	PORT_NOE |= _BV(P_NOE);
+	PORT_NE |= _BV(P_NE);
 
 	// Set address lines low
 	delayMicroseconds(ubTime);
@@ -127,27 +135,31 @@ void tMegadrive::relax(void) {
 }
 
 void tMegadrive::writeCycle(uint32_t ulAddr, uint16_t uwData) {
+	const uint8_t ubTime = 2;
+
+	// Set address lines
 	PORT_ADDR_LO = ulAddr & 0xFF;
   PORT_ADDR_MID = (ulAddr >> 8) & 0xFF;
-  PORT_ADDR_HI |= ((ulAddr | _BV(20)) >> 16) & 0b01111111;
+  PORT_ADDR_HI |= (ulAddr >> 16) & 0b01111111;
 
-	// Output
-	DDR_DATA_HI = 0xFF;
+	// Set data to output
 	DDR_DATA_LO = 0xFF;
+	DDR_DATA_HI = 0xFF;
 
 	PORT_DATA_LO = uwData & 0xFF;
   PORT_DATA_HI = (uwData >> 8) & 0xFF;
 
   // Set control lines lo - address latches on falling edge
-	PORT_NOE |= _BV(PIN_NOE);
-	PORT_NE &= ~ _BV(PIN_NE);
-	// delayMicroseconds(1);
+  delayMicroseconds(ubTime);
+	PORT_ADDR_HI |= _BV(ADDR_PRG_LINE - 16);
+	PORT_NE &= ~ _BV(P_NE);
+	PORT_NOE &= ~ _BV(P_NOE);
+	delayMicroseconds(ubTime);
 
 	// Set control lines hi - data latches on rising edge
-	PORT_NE |= _BV(PIN_NE);
-
-	// delayMicroseconds(1);
-	PORT_ADDR_HI &= ~0b01111111;
+	PORT_NOE |= _BV(P_NOE);
+	PORT_NE |= _BV(P_NE);
+	PORT_ADDR_HI &= ~ _BV(ADDR_PRG_LINE - 16);
 }
 
 bool tMegadrive::waitToggle(void) {
