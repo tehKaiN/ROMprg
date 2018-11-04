@@ -207,6 +207,46 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 				return 1;
 			}
 		}
+		else if(eOp == tOp::DEV_BURN) {
+			if(s_szOutName == "") {
+				fmt::print("ERR: input not specified\n");
+				return 1;
+			}
+			FILE *pIn = fopen(s_szOutName.c_str(), "rb");
+			if(!pIn) {
+				fmt::print("ERR: Couldn't open '{}'\n", s_szOutName);
+				return 1;
+			}
+
+			// Check file size
+			fseek(pIn, 0, SEEK_END);
+			uint32_t ulSize = ftell(pIn);
+			fseek(pIn, 0, SEEK_SET);
+			if(!ulSize) {
+				fmt::print("ERR: empty input file!\n");
+				return 1;
+			}
+
+			fmt::print("Writing {}k into device...\n", ulSize / 1024);
+			uint8_t pData[ulSize];
+			fread(pData, 1, ulSize, pIn);
+			fclose(pIn);
+
+			tMegadriveHeader sHeader;
+			memcpy(&sHeader, &pData[0x100], sizeof(tMegadriveHeader));
+			std::string szRomName = sHeader.getOverseasName();
+			for(auto i = 0; i < ulSize; i += 2) {
+				fmt::print(
+					"\r{}: {}/{} ({:.2f}%, {}KB/s)",
+					szRomName, i, ulSize, i*100.0 / ulSize, 0
+				);
+				if(!RomPrg.write(2, i/2, &pData[i])) {
+					fmt::print("ERR: Programming failed!\n");
+					return 1;
+				}
+			}
+			fmt::print("\n");
+		}
 		else {
 			fmt::print("ERR: Unknown cmd\n");
 			printUsage(pArgs[0]);

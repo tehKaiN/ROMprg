@@ -64,7 +64,10 @@ bool tRomPrg::readBytes(uint8_t ubDepth, uint8_t *pDest, uint32_t ulOffs, uint32
 }
 
 bool tRomPrg::erase(void) {
+	// Send cmd
 	m_pSerial->write("erase_all\n");
+
+	// Read initial response
 	std::string szResponse = rtrim(m_pSerial->readline(100, "\n"));
 	if(szResponse != "START erase_all") {
 		fmt::print(
@@ -72,6 +75,8 @@ bool tRomPrg::erase(void) {
 		);
 		return false;
 	}
+
+	// Read final response
 	do {
 		szResponse = m_pSerial->readline(100, "\n");
 	} while(szResponse == "");
@@ -79,7 +84,37 @@ bool tRomPrg::erase(void) {
 	if(szResponse == "SUCC") {
 		return true;
 	}
-	fmt::print("ERR: wrong erase response: {}\n", szResponse);
+	fmt::print("ERR: wrong final response: {}\n", szResponse);
+	return false;
+}
+
+bool tRomPrg::write(uint8_t ubDepth, uint32_t ulAddr, uint8_t *pData) {
+	// Send cmd
+	std::string szCmd = fmt::format("write {} {} 0x", ubDepth, ulAddr);
+	for(auto i = 0; i < ubDepth; ++i) {
+		szCmd += fmt::format("{:02X}", pData[i]);
+	}
+	szCmd += "\n";
+	m_pSerial->write(szCmd);
+
+	// Read initial response
+	std::string szResponse = rtrim(m_pSerial->readline(100, "\n"));
+	if(szResponse != "START write") {
+		fmt::print(
+			"ERR: Wrong initialization text received: '{}'\n", szResponse
+		);
+		return false;
+	}
+
+	// Read final response
+	do {
+		szResponse = m_pSerial->readline(100, "\n");
+	} while(szResponse == "");
+	rtrimRef(szResponse);
+	if(szResponse == "SUCC") {
+		return true;
+	}
+	fmt::print("ERR: wrong final response: {}\n", szResponse);
 	return false;
 }
 

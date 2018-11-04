@@ -15,6 +15,7 @@ public:
 	);
 	bool isOpened(void) {return isOpen;};
 	bool erase(void);
+	bool write(uint8_t ubDepth, uint32_t ulAddr, uint8_t *pData);
 
 private:
 	std::unique_ptr<serial::Serial> m_pSerial = nullptr;
