@@ -133,6 +133,7 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 		std::string szResponse;
 		using std::chrono::duration_cast;
 		using std::chrono::milliseconds;
+		auto TimeStart = std::chrono::system_clock::now();
 		if(eOp == tOp::DEV_DUMP) {
 			if(s_szOutName == "") {
 				// Get header
@@ -177,7 +178,6 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 			uint32_t ulKilos = lSize / 1024;
 
 			FILE *pFile = fopen(s_szOutName.c_str(), "wb");
-			auto TimeStart = std::chrono::system_clock::now();
 			for(auto k = 0; k < ulKilos; ++k) {
 				auto PartStart = std::chrono::system_clock::now();
 
@@ -197,19 +197,28 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 					k+1, ulKilos, (k+1)*100.0 / ulKilos, fSpeed
 				);
 			}
-			auto TimeEnd = std::chrono::system_clock::now();
+			fmt::print("\n");
 			fclose(pFile);
-			float fTotalTime = duration_cast<milliseconds>(TimeEnd - TimeStart).count() / 1000.0;
-			fmt::print("\nAll done! Total time: {:.2f}s\n", fTotalTime);
+		}
+		else if(eOp == tOp::DEV_CLEAR) {
+			fmt::print("Erasing...\n");
+			if(!RomPrg.erase()) {
+				fmt::print("ERR: erase failed\n");
+				return 1;
+			}
 		}
 		else {
 			fmt::print("ERR: Unknown cmd\n");
 			printUsage(pArgs[0]);
 			return 0;
 		}
+		auto TimeEnd = std::chrono::system_clock::now();
+		float fTotalTime = duration_cast<milliseconds>(TimeEnd - TimeStart).count() / 1000.0;
+		fmt::print("All done! Total time: {:.2f}s\n", fTotalTime);
 	}
 	catch(std::exception Exc) {
 		fmt::print("Exception: {}", Exc.what());
+		return 1;
 	}
 
 	return 0;

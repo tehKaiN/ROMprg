@@ -63,3 +63,23 @@ bool tRomPrg::readBytes(uint8_t ubDepth, uint8_t *pDest, uint32_t ulOffs, uint32
 	return true;
 }
 
+bool tRomPrg::erase(void) {
+	m_pSerial->write("erase_all\n");
+	std::string szResponse = rtrim(m_pSerial->readline(100, "\n"));
+	if(szResponse != "START erase_all") {
+		fmt::print(
+			"ERR: Wrong initialization text received: '{}'\n", szResponse
+		);
+		return false;
+	}
+	do {
+		szResponse = m_pSerial->readline(100, "\n");
+	} while(szResponse == "");
+	rtrimRef(szResponse);
+	if(szResponse == "SUCC") {
+		return true;
+	}
+	fmt::print("ERR: wrong erase response: {}\n", szResponse);
+	return false;
+}
+

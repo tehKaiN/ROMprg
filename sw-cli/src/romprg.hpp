@@ -14,6 +14,7 @@ public:
 		uint8_t ubDepth, uint8_t *pDest, uint32_t ulOffs, uint32_t ulSize
 	);
 	bool isOpened(void) {return isOpen;};
+	bool erase(void);
 
 private:
 	std::unique_ptr<serial::Serial> m_pSerial = nullptr;
