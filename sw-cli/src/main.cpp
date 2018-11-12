@@ -227,23 +227,33 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 				return 1;
 			}
 
+			// Read romprg's buffer size
+			int32_t lBufferSize = RomPrg.getBufferSize();
+			fmt::print("ROMprg write buffer size: {}\n", lBufferSize);
+
 			fmt::print("Writing {}k into device...\n", ulSize / 1024);
 			uint8_t pData[ulSize];
 			fread(pData, 1, ulSize, pIn);
 			fclose(pIn);
 
+			// Get name
 			tMegadriveHeader sHeader;
 			memcpy(&sHeader, &pData[0x100], sizeof(tMegadriveHeader));
 			std::string szRomName = sHeader.getOverseasName();
-			for(auto i = 0; i < ulSize; i += 2) {
+
+			// Write data into cart
+			for(auto i = 0; i < ulSize; i += lBufferSize) {
+				auto PartStart = std::chrono::system_clock::now();
+				if(!RomPrg.writeBuffered(2, i/2, &pData[i], lBufferSize/2)) {
+					fmt::print("ERR: Programming failed!\n");
+					return 1;
+				}
+				auto PartEnd = std::chrono::system_clock::now();
+				float fSpeed = 1000.0 / duration_cast<milliseconds>(PartEnd - PartStart).count();
 				fmt::print(
 					"\r{}: {}/{} ({:.2f}%, {}KB/s)",
 					szRomName, i, ulSize, i*100.0 / ulSize, 0
 				);
-				if(!RomPrg.write(2, i/2, &pData[i])) {
-					fmt::print("ERR: Programming failed!\n");
-					return 1;
-				}
 			}
 			fmt::print("\n");
 		}

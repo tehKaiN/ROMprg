@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include "flash/am29f040.hpp"
 #include "flash/megadrive.hpp"
+#include "data_buffer.hpp"
 
 static uint8_t onesCount(uint32_t ulData) {
 	uint8_t ubCnt = 0;
@@ -51,6 +52,43 @@ bool tFlash::processCommand(const char *szCmd) {
 	}
 	else if(!strcmp(szCmdType, "erase_all") && ubArgCnt == 255) {
 		isOk = cmdErase();
+	}
+	else if(!strcmp(szCmdType, "buffer_size") && ubArgCnt == 255) {
+		Serial.print("Size: ");
+		Serial.println(DATA_BUFFER_SIZE);
+		isOk = true;
+	}
+	else if(!strcmp(szCmdType, "write_buffered") && ubArgCnt == 3) {
+		// depth, start addr, words in buffer (bytes / depth)
+		// TODO: write_buffered error messages
+		uint32_t &ulDepth = pArgs[0];
+		uint32_t &ulAddr = pArgs[1];
+		uint32_t &ulCount = pArgs[2];
+		Serial.println("Waiting for read");
+		uint32_t ulReadBytes = 0;
+		do {
+			// Serial.readBytes() has timeout so we need a loop
+			ulReadBytes += Serial.readBytes(
+				g_pDataBuffer, ulDepth * ulCount - ulReadBytes
+			);
+			// TODO: timeout for buffer read loop
+		} while(ulReadBytes < ulDepth * ulCount);
+		Serial.println("Writing...");
+		isOk = true;
+		if(pArgs[0] == 2) {
+			for(uint16_t i = 0; i < pArgs[2]; ++i) {
+				uint16_t uwData = (g_pDataBuffer[i * 2] << 8) | g_pDataBuffer[i * 2 + 1];
+				if(!cmdWrite(pArgs[0], pArgs[1] + i, uwData)) {
+					isOk = false;
+					break;
+				}
+			}
+		}
+		else {
+			// TODO: implement write_buffered depth 1
+			// TODO: implement write_buffered depth 4
+			isOk = false;
+		}
 	}
 	else {
 		Serial.println("ERR: Unknown command: '");
