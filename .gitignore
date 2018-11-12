@@ -1,0 +1,8 @@
+#KiCAD
+*.dsn
+*.kicad_pcb-bak
+*.ses
+
+# CLI
+sw-cli/romprg\.exe
+*.bin

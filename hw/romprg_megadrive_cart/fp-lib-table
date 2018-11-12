@@ -1,0 +1,5 @@
+(fp_lib_table
+  (lib (name Arduino)(type KiCad)(uri C:/prg/_git/romprg/deps/arduino-kicad-library/Arduino.pretty)(options "")(descr ""))
+  (lib (name megadrive)(type KiCad)(uri C:/prg/_git/romprg/deps/smdRomCart/lib/megadrive.pretty)(options "")(descr ""))
+  (lib (name romprg)(type KiCad)(uri C:/prg/_git/romprg/hw/lib/romprg.pretty)(options "")(descr ""))
+)

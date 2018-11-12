@@ -1,0 +1,87 @@
+
+(rules PCB romprg_megadrive_cart
+  (snap_angle 
+    fortyfive_degree
+  )
+  (autoroute_settings
+    (fanout on)
+    (autoroute on)
+    (postroute on)
+    (vias on)
+    (via_costs 50)
+    (plane_via_costs 5)
+    (start_ripup_costs 100)
+    (start_pass_no 130)
+    (layer_rule F.Cu
+      (active on)
+      (preferred_direction horizontal)
+      (preferred_direction_trace_costs 1.0)
+      (against_preferred_direction_trace_costs 2.7)
+    )
+    (layer_rule B.Cu
+      (active on)
+      (preferred_direction vertical)
+      (preferred_direction_trace_costs 1.0)
+      (against_preferred_direction_trace_costs 1.6)
+    )
+  )
+  (rule
+    (width 250.0)
+    (clear 200.2)
+    (clear 125.0 (type smd_to_turn_gap))
+    (clear 50.0 (type smd_smd))
+  )
+  (padstack "Via[0-1]_800:400_um"
+    (shape
+      (circle F.Cu 800.0 0.0 0.0)
+    )
+    (shape
+      (circle B.Cu 800.0 0.0 0.0)
+    )
+    (attach off)
+  )
+  (via 
+    "Via[0-1]_800:400_um" "Via[0-1]_800:400_um" default
+  )
+  (via 
+    "Via[0-1]_800:400_um-kicad_default" "Via[0-1]_800:400_um" "kicad_default"
+  )
+  (via_rule
+    default "Via[0-1]_800:400_um"
+  )
+  (via_rule
+    "kicad_default" "Via[0-1]_800:400_um-kicad_default"
+  )
+  (class default
+    (clearance_class default)
+    (via_rule default)
+    (rule
+      (width 250.0)
+    )
+    (circuit 
+      (use_layer F.Cu B.Cu)
+    )
+  )
+  (class "kicad_default"
+    GND "Net-(CON1-PadB01)" +5V "Net-(CON1-PadB02)" PL7 "Net-(CON1-PadB03)" PK2 PK0
+    PL6 PK1 PK3 PB1 PL5 PB2 PK4 PB3
+    PL4 PB4 PK5 PB5 PL3 PB6 PK6 "Net-(CON1-PadB12)"
+    PL2 "Net-(CON1-PadB13)" PK7 "Net-(CON1-PadB14)" PL1 "Net-(CON1-PadB15)" PB0 PG1
+    PL0 PG0 PG2 PA7 "Net-(CON1-PadB19)" PA0 "Net-(CON1-PadB20)" PC0
+    "Net-(CON1-PadB21)" PA6 PC7 PA1 PC6 PC1 PC5 PA5
+    PC4 PA2 "Net-(CON1-PadB26)" PC2 "Net-(CON1-PadB27)" PA4 "Net-(CON1-PadB28)" PA3
+    "Net-(CON1-PadB29)" PC3 "Net-(CON1-PadB30)" "Net-(CON1-PadB31)" "Net-(CON1-PadB32)" "Net-(XA1-PadA0)" "Net-(XA1-PadVIN)" "Net-(XA1-Pad3V3)"
+    "Net-(XA1-PadRST1)" "Net-(XA1-PadIORF)" "Net-(XA1-PadD21)" "Net-(XA1-PadD20)" "Net-(XA1-PadD19)" "Net-(XA1-PadD18)" "Net-(XA1-PadD17)" "Net-(XA1-PadD16)"
+    "Net-(XA1-PadD15)" "Net-(XA1-PadD14)" "Net-(XA1-PadD0)" "Net-(XA1-PadD1)" "Net-(XA1-PadD2)" "Net-(XA1-PadD3)" "Net-(XA1-PadD4)" "Net-(XA1-PadD5)"
+    "Net-(XA1-PadD6)" "Net-(XA1-PadD7)" "Net-(XA1-PadD8)" "Net-(XA1-PadD9)" "Net-(XA1-PadSCL)" "Net-(XA1-PadSDA)" "Net-(XA1-PadAREF)" "Net-(XA1-PadD13)"
+    "Net-(XA1-PadA1)" "Net-(XA1-PadA2)" "Net-(XA1-PadA3)" "Net-(XA1-PadA4)" "Net-(XA1-PadA5)" "Net-(XA1-PadA6)" "Net-(XA1-PadA7)" "Net-(XA1-PadD38)"
+    (clearance_class "kicad_default")
+    (via_rule kicad_default)
+    (rule
+      (width 250.0)
+    )
+    (circuit 
+      (use_layer F.Cu B.Cu)
+    )
+  )
+)
