@@ -1,6 +1,7 @@
 #include "flash.hpp"
 #include <Arduino.h>
 #include "flash/am29f040.hpp"
+#include "flash/at24c02.hpp"
 #include "flash/megadrive.hpp"
 #include "data_buffer.hpp"
 
@@ -106,6 +107,9 @@ tFlash *tFlash::fromString(const char *szChip) {
 	}
 	if(!strcmp(szChip, "megadrive")) {
 		return new tMegadrive();
+	}
+	if(!strcmp(szChip, "at24c02")) {
+		return new tAt24c02();
 	}
 	return nullptr;
 }
