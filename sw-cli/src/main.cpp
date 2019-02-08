@@ -14,7 +14,7 @@ static std::string s_szOutName = "";
 static std::string s_szPort = "";
 static bool s_isAutoSize = false;
 
-static std::vector<std::string> s_vChips = {"megadrive"};
+static std::vector<std::string> s_vChips = {"megadrive", "at24c02"};
 
 static void printUsage(const char *szAppName) {
 	// romprg -c megadrive -rr -s 512k -n dupa
@@ -106,7 +106,7 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 	}
 
 	// Check parameters if they look as remotely valid
-	if(szChip != s_vChips[0]) {
+	if(std::find(s_vChips.begin(), s_vChips.end(), szChip) == s_vChips.end()) {
 		fmt::print("ERR: incorrect chip/device name: '{}'\n", szChip);
 		printUsage(pArgs[0]);
 		return 1;
@@ -257,10 +257,14 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 			}
 			fmt::print("\n");
 		}
+		if(eOp == tOp::READ || eOp == tOp::WRITE) {
+			fmt::print("ERR: Not implemented, sorry!\n");
+			return 1;
+		}
 		else {
 			fmt::print("ERR: Unknown cmd\n");
 			printUsage(pArgs[0]);
-			return 0;
+			return 1;
 		}
 		auto TimeEnd = std::chrono::system_clock::now();
 		float fTotalTime = duration_cast<milliseconds>(TimeEnd - TimeStart).count() / 1000.0;
