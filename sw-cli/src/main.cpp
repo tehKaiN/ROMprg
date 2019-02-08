@@ -37,7 +37,7 @@ static void printUsage(const char *szAppName) {
 
 static void printUsageDump(void) {
 	fmt::print("Dump (-dd) options:\n");
-	fmt::print("\t-on\t\tOutput name, if omitted will use default\n");
+	fmt::print("\t-n\t\tOutput name, if omitted will use default\n");
 	fmt::print(
 		"\t-s\t\tSize in bytes divisible by 1024.\n"
 		"\t\t\tYou can use case-insensitive suffixes: 512k, 1m\n"
@@ -257,7 +257,7 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 			}
 			fmt::print("\n");
 		}
-		if(eOp == tOp::READ || eOp == tOp::WRITE) {
+		else if(eOp == tOp::READ || eOp == tOp::WRITE) {
 			fmt::print("ERR: Not implemented, sorry!\n");
 			return 1;
 		}
