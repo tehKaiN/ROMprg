@@ -14,7 +14,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(250000);
   pinMode(13, OUTPUT);
-	Serial.println("romprg v.0.1");
+	Serial.println("romprg v.0.2");
   // Usable ports:
   // PORTB - scattered on DIO & PWM region
   // PORTF, PORTK - analog in region

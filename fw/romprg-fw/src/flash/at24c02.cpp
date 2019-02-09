@@ -42,7 +42,21 @@ bool tAt24c02::writeData(
 		return false;
 	}
 
-	return false;
+	// Clear write protect
+	PORT_WP &= ~_BV(P_WP);
+
+	// LED hi on busy
+	PORT_STATUS |= _BV(P_STATUS);
+
+	delayMicroseconds(100);
+
+	uint8_t ubAddr = 0b1010000;
+	Wire.beginTransmission(ubAddr);
+	Wire.write(uint8_t(ulAddr));
+	Wire.write(uint8_t(ulValue));
+	Wire.endTransmission(true);
+
+	return true;
 }
 
 bool tAt24c02::readData(
@@ -59,9 +73,8 @@ bool tAt24c02::readData(
 	PORT_STATUS |= _BV(P_STATUS);
 
 	uint8_t ubAddr = 0b1010000;
-
 	Wire.beginTransmission(ubAddr);
-	Wire.write(ulAddr);
+	Wire.write(uint8_t(ulAddr));
 	Wire.endTransmission(false);
 	Wire.requestFrom(ubAddr, static_cast<uint8_t>(true));
 	if(Wire.available()) {
