@@ -48,13 +48,15 @@ bool tAt24c02::writeData(
 	// LED hi on busy
 	PORT_STATUS |= _BV(P_STATUS);
 
-	delayMicroseconds(100);
+	delayMicroseconds(1000);
 
 	uint8_t ubAddr = 0b1010000;
 	Wire.beginTransmission(ubAddr);
 	Wire.write(uint8_t(ulAddr));
 	Wire.write(uint8_t(ulValue));
 	Wire.endTransmission(true);
+
+	delayMicroseconds(1000);
 
 	return true;
 }

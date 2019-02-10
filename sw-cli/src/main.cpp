@@ -258,9 +258,15 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 			fclose(pIn);
 
 			// Get name
-			tMegadriveHeader sHeader;
-			memcpy(&sHeader, &pData[0x100], sizeof(tMegadriveHeader));
-			std::string szRomName = sHeader.getOverseasName();
+			std::string szRomName;
+			if(szChip == "megadrive") {
+				tMegadriveHeader sHeader;
+				memcpy(&sHeader, &pData[0x100], sizeof(tMegadriveHeader));
+				std::string szRomName = sHeader.getOverseasName();
+			}
+			else {
+				szRomName = s_szOutName;
+			}
 
 			// Write data into cart
 			for(auto i = 0; i < lSize; i += lBufferSize) {

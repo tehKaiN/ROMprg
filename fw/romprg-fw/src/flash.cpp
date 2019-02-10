@@ -18,7 +18,7 @@ static uint8_t onesCount(uint32_t ulData) {
 
 bool tFlash::processCommand(const char *szCmd) {
 	// Read message type
-	char szCmdType[10];
+	char szCmdType[20];
 	int32_t lCntRead = sscanf(szCmd, "%s", szCmdType);
 	if(!lCntRead) {
 		return false;
@@ -76,7 +76,15 @@ bool tFlash::processCommand(const char *szCmd) {
 		} while(ulReadBytes < ulDepth * ulCount);
 		Serial.println("Writing...");
 		isOk = true;
-		if(pArgs[0] == 2) {
+		if(pArgs[0] == 1) {
+			for(uint16_t i = 0; i < pArgs[2]; ++i) {
+				if(!cmdWrite(pArgs[0], pArgs[1] + i, g_pDataBuffer[i])) {
+					isOk = false;
+					break;
+				}
+			}
+		}
+		else if(pArgs[0] == 2) {
 			for(uint16_t i = 0; i < pArgs[2]; ++i) {
 				uint16_t uwData = (g_pDataBuffer[i * 2] << 8) | g_pDataBuffer[i * 2 + 1];
 				if(!cmdWrite(pArgs[0], pArgs[1] + i, uwData)) {
@@ -86,13 +94,12 @@ bool tFlash::processCommand(const char *szCmd) {
 			}
 		}
 		else {
-			// TODO: implement write_buffered depth 1
 			// TODO: implement write_buffered depth 4
 			isOk = false;
 		}
 	}
 	else {
-		Serial.println("ERR: Unknown command: '");
+		Serial.print("ERR: Unknown command: '");
 		Serial.print(szCmdType);
 		Serial.print("', arg cnt: ");
 		Serial.println(ubArgCnt);

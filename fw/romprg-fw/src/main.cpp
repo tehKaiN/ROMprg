@@ -26,7 +26,7 @@ static void serialProcessRx() {
     return;
 	}
 
-  char szCmd[10];
+  char szCmd[20];
   sscanf(s_szSerialBfr, "%s", szCmd);
 
 	if(!strcmp(szCmd, "chip")) {

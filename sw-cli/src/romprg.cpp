@@ -193,5 +193,6 @@ bool tRomPrg::writeBuffered(
 	if(szResponse == "SUCC") {
 		return true;
 	}
+	fmt::print("ERR: Unexpected final response: '{}'\n", szResponse);
 	return false;
 }
