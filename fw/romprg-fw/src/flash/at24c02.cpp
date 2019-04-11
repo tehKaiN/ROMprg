@@ -35,9 +35,7 @@ tAt24c02::tAt24c02(void)
 	Wire.begin();
 }
 
-bool tAt24c02::writeData(
-	uint8_t ubDepth, uint32_t ulAddr, uint32_t ulValue
-) {
+bool tAt24c02::writeData(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulValue) {
 	if(ubDepth != 1) {
 		return false;
 	}
@@ -56,14 +54,12 @@ bool tAt24c02::writeData(
 	Wire.write(uint8_t(ulValue));
 	Wire.endTransmission(true);
 
-	delayMicroseconds(1000);
+	delayMicroseconds(10*1000);
 
 	return true;
 }
 
-bool tAt24c02::readData(
-	uint8_t ubDepth, uint32_t ulAddr, uint32_t &ulResult
-) {
+bool tAt24c02::readData(uint8_t ubDepth, uint32_t ulAddr, uint32_t &ulResult) {
 	if(ubDepth != 1) {
 		return false;
 	}
