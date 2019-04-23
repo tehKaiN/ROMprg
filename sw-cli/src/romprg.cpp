@@ -35,7 +35,7 @@ bool tRomPrg::readBytes(
 )
 {
 	// Send read cmd
-	m_pSerial->write(fmt::format("read 2 {} {}\n", ulOffs, ulSize));
+	m_pSerial->write(fmt::format("read {} {} {}\n", ubDepth, ulOffs, ulSize));
 
 	// Read init response
 	std::string szResponse = rtrim(m_pSerial->readline(100, "\n"));
@@ -193,5 +193,6 @@ bool tRomPrg::writeBuffered(
 	if(szResponse == "SUCC") {
 		return true;
 	}
+	fmt::print("ERR: Unexpected final response: '{}'\n", szResponse);
 	return false;
 }

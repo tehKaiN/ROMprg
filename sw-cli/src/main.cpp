@@ -14,7 +14,7 @@ static std::string s_szOutName = "";
 static std::string s_szPort = "";
 static bool s_isAutoSize = false;
 
-static std::vector<std::string> s_vChips = {"megadrive"};
+static std::vector<std::string> s_vChips = {"megadrive", "at24c02"};
 
 static void printUsage(const char *szAppName) {
 	// romprg -c megadrive -rr -s 512k -n dupa
@@ -37,7 +37,7 @@ static void printUsage(const char *szAppName) {
 
 static void printUsageDump(void) {
 	fmt::print("Dump (-dd) options:\n");
-	fmt::print("\t-on\t\tOutput name, if omitted will use default\n");
+	fmt::print("\t-n\t\tOutput name, if omitted will use default\n");
 	fmt::print(
 		"\t-s\t\tSize in bytes divisible by 1024.\n"
 		"\t\t\tYou can use case-insensitive suffixes: 512k, 1m\n"
@@ -106,7 +106,7 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 	}
 
 	// Check parameters if they look as remotely valid
-	if(szChip != s_vChips[0]) {
+	if(std::find(s_vChips.begin(), s_vChips.end(), szChip) == s_vChips.end()) {
 		fmt::print("ERR: incorrect chip/device name: '{}'\n", szChip);
 		printUsage(pArgs[0]);
 		return 1;
@@ -128,6 +128,10 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 			fmt::print("ERR: Unsupported chip/device: {}", szChip);
 			return 1;
 		}
+		uint8_t ubDepth = 1;
+		if(szChip == "megadrive") {
+			ubDepth = 2;
+		}
 
 		// Process command
 		std::string szResponse;
@@ -135,19 +139,29 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 		using std::chrono::milliseconds;
 		auto TimeStart = std::chrono::system_clock::now();
 		if(eOp == tOp::DEV_DUMP) {
+			if(szChip == "megadrive" && (lSize % 1024) != 0) {
+				fmt::print("ERR: size not divisible by 1024");
+				return 1;
+			}
 			if(s_szOutName == "") {
-				// Get header
-				tMegadriveHeader sHeader;
-				bool isReadOk = RomPrg.readBytes(
-					2, reinterpret_cast<uint8_t*>(&sHeader),
-					0x100/2, sizeof(tMegadriveHeader)/2
-				);
-				if(!isReadOk) {
-					fmt::print("ERR: Couldn't read ROM header\n");
+				if(szChip == "megadrive") {
+					// Get header
+					tMegadriveHeader sHeader;
+					bool isReadOk = RomPrg.readBytes(
+						2, reinterpret_cast<uint8_t*>(&sHeader),
+						0x100/2, sizeof(tMegadriveHeader)/2
+					);
+					if(!isReadOk) {
+						fmt::print("ERR: Couldn't read ROM header\n");
+						return 1;
+					}
+					fmt::print("Deduced ROM name: {}\n", sHeader.getOverseasName());
+					s_szOutName = fmt::format("{}.bin", sHeader.getOverseasName());
+				}
+				else {
+					fmt::print("ERR: auto naming not supported for chip: '{}'\n", szChip);
 					return 1;
 				}
-				fmt::print("Deduced ROM name: {}\n", sHeader.getOverseasName());
-				s_szOutName = fmt::format("{}.bin", sHeader.getOverseasName());
 			}
 
 			if(s_isAutoSize) {
@@ -170,32 +184,35 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 					fmt::print("Determined ROM size: {}k\n", lSize/1024);
 				}
 			}
-			else if (lSize <= 0 || (lSize % 1024) != 0) {
-				fmt::print("ERR: Size unspecified or not divisible by 1024\n");
+			else if (lSize <= 0) {
+				fmt::print("ERR: Size unspecified\n");
 				printUsageDump();
 				return 1;
 			}
-			uint32_t ulKilos = lSize / 1024;
+			float fKilos = lSize / 1024;
 
 			FILE *pFile = fopen(s_szOutName.c_str(), "wb");
-			for(auto k = 0; k < ulKilos; ++k) {
+			int32_t lOffs = 0;
+			for(auto k = 0; lOffs < lSize; ++k) {
 				auto PartStart = std::chrono::system_clock::now();
 
 				uint8_t pData[1024];
-				if(!RomPrg.readBytes(2, pData, k*512, 512)) {
-					fmt::print("ERR: Read @ offset {}k\n", 2*512, k);
+				uint16_t uwReadSize = std::min(1024, lSize - lOffs);
+				if(!RomPrg.readBytes(ubDepth, pData, lOffs, (uwReadSize / ubDepth))) {
+					fmt::print("ERR: Read @ offset {}\n", lOffs);
 					return 1;
 				}
 
 				// Put them into file
-				fwrite(pData, 1, 1024, pFile);
+				fwrite(pData, 1, uwReadSize, pFile);
 				auto PartEnd = std::chrono::system_clock::now();
 
 				float fSpeed = 1000.0 / duration_cast<milliseconds>(PartEnd - PartStart).count();
 				fmt::print(
-					"\r{}: {}/{} ({:.2f}%, {:.2f}KB/s)", s_szOutName,
-					k+1, ulKilos, (k+1)*100.0 / ulKilos, fSpeed
+					"\r{}: {}/{}k ({:.2f}%, {:.2f}KB/s)", s_szOutName,
+					k+1, fKilos, (k+1)*100.0 / fKilos, fSpeed
 				);
+				lOffs += 1024 / ubDepth;
 			}
 			fmt::print("\n");
 			fclose(pFile);
@@ -208,6 +225,10 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 			}
 		}
 		else if(eOp == tOp::DEV_BURN) {
+			if(szChip == "megadrive" && (lSize % 1024) != 0) {
+				fmt::print("ERR: size not divisible by 1024");
+				return 1;
+			}
 			if(s_szOutName == "") {
 				fmt::print("ERR: input not specified\n");
 				return 1;
@@ -220,9 +241,9 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 
 			// Check file size
 			fseek(pIn, 0, SEEK_END);
-			uint32_t ulSize = ftell(pIn);
+			int32_t lSize = ftell(pIn);
 			fseek(pIn, 0, SEEK_SET);
-			if(!ulSize) {
+			if(!lSize) {
 				fmt::print("ERR: empty input file!\n");
 				return 1;
 			}
@@ -231,20 +252,27 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 			int32_t lBufferSize = RomPrg.getBufferSize();
 			fmt::print("ROMprg write buffer size: {}\n", lBufferSize);
 
-			fmt::print("Writing {}k into device...\n", ulSize / 1024);
-			uint8_t pData[ulSize];
-			fread(pData, 1, ulSize, pIn);
+			fmt::print("Writing {:.2f}k into device...\n", lSize / 1024.0);
+			uint8_t pData[lSize];
+			fread(pData, 1, lSize, pIn);
 			fclose(pIn);
 
 			// Get name
-			tMegadriveHeader sHeader;
-			memcpy(&sHeader, &pData[0x100], sizeof(tMegadriveHeader));
-			std::string szRomName = sHeader.getOverseasName();
+			std::string szRomName;
+			if(szChip == "megadrive") {
+				tMegadriveHeader sHeader;
+				memcpy(&sHeader, &pData[0x100], sizeof(tMegadriveHeader));
+				std::string szRomName = sHeader.getOverseasName();
+			}
+			else {
+				szRomName = s_szOutName;
+			}
 
 			// Write data into cart
-			for(auto i = 0; i < ulSize; i += lBufferSize) {
+			for(auto i = 0; i < lSize; i += lBufferSize) {
 				auto PartStart = std::chrono::system_clock::now();
-				if(!RomPrg.writeBuffered(2, i/2, &pData[i], lBufferSize/2)) {
+				auto WriteSize = std::min(lSize, lBufferSize);
+				if(!RomPrg.writeBuffered(ubDepth, i/ubDepth, &pData[i], WriteSize / ubDepth)) {
 					fmt::print("ERR: Programming failed!\n");
 					return 1;
 				}
@@ -252,15 +280,19 @@ int main(int32_t lArgCnt, char *pArgs[]) {
 				float fSpeed = 1000.0 / duration_cast<milliseconds>(PartEnd - PartStart).count();
 				fmt::print(
 					"\r{}: {}/{} ({:.2f}%, {}KB/s)",
-					szRomName, i, ulSize, i*100.0 / ulSize, 0
+					szRomName, i, lSize, i*100.0 / lSize, 0
 				);
 			}
 			fmt::print("\n");
 		}
+		else if(eOp == tOp::READ || eOp == tOp::WRITE) {
+			fmt::print("ERR: Not implemented, sorry!\n");
+			return 1;
+		}
 		else {
 			fmt::print("ERR: Unknown cmd\n");
 			printUsage(pArgs[0]);
-			return 0;
+			return 1;
 		}
 		auto TimeEnd = std::chrono::system_clock::now();
 		float fTotalTime = duration_cast<milliseconds>(TimeEnd - TimeStart).count() / 1000.0;

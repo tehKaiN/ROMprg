@@ -14,7 +14,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(250000);
   pinMode(13, OUTPUT);
-	Serial.println("romprg v.0.1");
+	Serial.println("romprg v.0.3");
   // Usable ports:
   // PORTB - scattered on DIO & PWM region
   // PORTF, PORTK - analog in region
@@ -26,7 +26,7 @@ static void serialProcessRx() {
     return;
 	}
 
-  char szCmd[10];
+  char szCmd[20];
   sscanf(s_szSerialBfr, "%s", szCmd);
 
 	if(!strcmp(szCmd, "chip")) {

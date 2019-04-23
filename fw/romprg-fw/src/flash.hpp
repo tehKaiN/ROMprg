@@ -69,6 +69,7 @@ private:
 	bool cmdMask(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulLength);
 	bool cmdChkErase(uint8_t ubDepth, uint32_t ulAddr, uint32_t ulLength);
 	bool cmdErase(void);
+	bool cmdWriteBuffered(uint32_t ulDepth, uint32_t ulAddr, uint32_t ulCount);
 };
 
 #endif // _ROMPRG_FW_FLASH_H_
